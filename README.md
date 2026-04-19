@@ -20,7 +20,7 @@ All three exceeded the required 20% improvement threshold by a wide margin, and 
 
 **4. What are the main challenges you face when conducting performance testing and profiling, and how do you overcome these challenges?**
 
-One major challenge is the non-determinism of measurements. Performance results can vary between runs due to JVM warm-up, JIT compilation state, garbage collection events, and background OS processes. To overcome this, I avoided relying on the first application run and warmed up the application by hitting each endpoint several times before recording a baseline. Another challenge was ensuring the server was actually running when executing JMeter test plans. The optimized JTL files in this exercise all returned connection refused errors because the server was not active during those runs, which prevented a direct numerical JMeter before/after comparison. This highlights the importance of a disciplined test execution workflow.
+One major challenge is the non-determinism of measurements. Performance results can vary between runs due to JVM warm-up, JIT compilation state, garbage collection events, and background OS processes. To overcome this, I avoided relying on the first application run and warmed up the application by hitting each endpoint several times before recording a baseline. Another challenge was interpreting the difference in scale between single-request profiler times and JMeter response times under concurrent load. For example, the profiler showed `getAllStudentsWithCourses` taking around 13,770 ms in isolation, but JMeter recorded an average of 83,287 ms under 10 concurrent users. Understanding that concurrent threads compound the N+1 query problem by simultaneously flooding the database with requests explained this gap and reinforced why both tools are necessary for a complete picture.
 
 **5. What are the main benefits you gain from using IntelliJ Profiler for profiling your application code?**
 
@@ -33,6 +33,68 @@ Discrepancies between the two tools are expected because they measure different 
 **7. What strategies do you implement in optimizing application code after analyzing results from performance testing and profiling? How do you ensure the changes you make do not affect the application's functionality?**
 
 After identifying the bottleneck through profiling, the first strategy is to understand the root cause before changing anything. In this exercise, all three bottlenecks shared a common pattern: the application was doing work in Java that should have been delegated to the database. For `getAllStudentsWithCourses`, the fix was replacing the N+1 loop with a single JOIN query via `findAllWithStudentAndCourse()`. For `joinStudentNames`, the fix was using a direct name projection query. For `findStudentWithHighestGpa`, the fix was using a database-level ORDER BY and LIMIT instead of fetching all records and sorting in memory. To ensure functionality was not affected, I verified that each optimized endpoint still returned the same data structure and correct values, and re-ran the profiler after each change to confirm the improvement was real. Making small, focused commits in the `optimize` branch with descriptive messages also made it straightforward to isolate and review each change individually.
+
+## JMeter Results
+
+### `/all-student` Endpoint
+
+**Before Optimization**
+![all-student JMeter Raw](JMeter%20Results/all-student_Raw.png)
+
+**After Optimization**
+![all-student JMeter Optimized](JMeter%20Results/all-student_Optimized.png)
+
+---
+
+### `/all-student-name` Endpoint
+
+**Before Optimization**
+![all-student-name JMeter Raw](JMeter%20Results/all-student-name_Raw.png)
+
+**After Optimization**
+![all-student-name JMeter Optimized](JMeter%20Results/all-student-name_Optimized.png)
+
+---
+
+### `/highest-gpa` Endpoint
+
+**Before Optimization**
+![highest-gpa JMeter Raw](JMeter%20Results/highest-gpa_Raw.png)
+
+**After Optimization**
+![highest-gpa JMeter Optimized](JMeter%20Results/highest-gpa_Optimized.png)
+
+---
+
+## Profiling Results
+
+### `/all-student` Endpoint
+
+**Before Optimization**
+![all-student Profiling Raw](Profiling%20Results/all-student_Raw.png)
+
+**After Optimization**
+![all-student Profiling Optimized](Profiling%20Results/all-student_Optimized.png)
+
+---
+
+### `/all-student-name` Endpoint
+
+**Before Optimization**
+![all-student-name Profiling Raw](Profiling%20Results/all-student-name_Raw.png)
+
+**After Optimization**
+![all-student-name Profiling Optimized](Profiling%20Results/all-student-name_Optimized.png)
+
+---
+
+### `/highest-gpa` Endpoint
+
+**Before Optimization**
+![highest-gpa Profiling Raw](Profiling%20Results/highest-gpa_Raw.png)
+
+**After Optimization**
+![highest-gpa Profiling Optimized](Profiling%20Results/highest-gpa_Optimized.png)
 
 ## Performance Comparison: Before vs After Optimization
 
